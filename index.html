@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SimpleDigitalSignage</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#0b0b0a">
+<style>
+:root {
+  --bg: #0b0b0a;
+  --surface: #171613;
+  --surface-raised: #201f1b;
+  --line: #332f28;
+  --text: #f3f1ea;
+  --text-dim: #a8a49a;
+  --text-mute: #645f54;
+  --danger: #d9d4c8;
+  box-sizing: border-box;
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  min-height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+input, textarea, select {
+  font-family: inherit;
+}
+
+/* ---------- shared ---------- */
+.hidden { display: none !important; }
+
+/* ---------- display mode ---------- */
+#displayView {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 5vh 6vw;
+}
+#displayTitle {
+  font-size: clamp(1.4rem, 2.8vw, 2.1rem);
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+  margin: 0 0 4vh;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2vh;
+}
+#displayList {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3.2vh;
+}
+.d-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25em;
+  transition: opacity .5s ease;
+}
+.d-row .d-content {
+  min-width: 0;
+  overflow-wrap: break-word;
+  color: var(--text-dim);
+  font-weight: 300;
+}
+.d-row .d-title {
+  font-weight: 700;
+  overflow-wrap: break-word;
+}
+.d-row.status-highlight {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 2.4vh 0;
+}
+.d-row.status-highlight .d-title { font-size: clamp(1.8rem, 5vw, 3.4rem); color: var(--text); }
+.d-row.status-highlight .d-content { font-size: clamp(1rem, 1.8vw, 1.3rem); }
+.d-row.status-normal .d-title { font-size: clamp(1.3rem, 3.4vw, 2.2rem); color: var(--text); }
+.d-row.status-normal .d-content { font-size: clamp(0.9rem, 1.5vw, 1.05rem); }
+.d-row.status-subdued .d-title { font-size: clamp(1rem, 2.2vw, 1.4rem); font-weight: 400; color: var(--text-dim); }
+.d-row.status-subdued .d-content { font-size: clamp(0.8rem, 1.3vw, 0.95rem); color: var(--text-mute); }
+
+#displayEmpty {
+  margin: auto;
+  color: var(--text-mute);
+  font-size: 1rem;
+  font-weight: 300;
+}
+#displayLang {
+  align-self: flex-end;
+  font-size: 0.85rem;
+  color: var(--text-mute);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- admin mode ---------- */
+#adminView {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 20px 60px;
+}
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.admin-header h1 {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text-mute);
+  margin: 0;
+}
+#presentBtn {
+  background: var(--text);
+  color: var(--bg);
+  border: none;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.field {
+  margin-bottom: 18px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-mute);
+  margin-bottom: 6px;
+}
+.field input[type=text], .field textarea {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 15px;
+}
+.field textarea { min-height: 64px; resize: vertical; }
+
+#boardTitleField input {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.item-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.item-card.paused { opacity: 0.5; }
+.item-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.item-top .order-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.order-controls button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  border-radius: 4px;
+  width: 22px;
+  height: 18px;
+  font-size: 11px;
+  line-height: 1;
+}
+.item-main { flex: 1; min-width: 0; }
+.item-main .it-title { font-size: 15px; font-weight: 700; }
+.item-main .it-preview { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+.item-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.item-actions button {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.item-actions button.danger { color: var(--danger); border-color: #4a3f3f; }
+.status-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.status-chip {
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-mute);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+.status-chip.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+#addItemBtn {
+  width: 100%;
+  background: none;
+  border: 1px dashed var(--line);
+  color: var(--text-dim);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.lang-rows { display: flex; flex-direction: column; gap: 8px; }
+.lang-row { display: flex; gap: 8px; align-items: flex-start; }
+.lang-row input[type=text].lang-code {
+  width: 64px;
+  flex: none;
+  text-transform: uppercase;
+}
+.lang-row button.remove-lang {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text-mute);
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  flex: none;
+}
+#addLangBtn {
+  align-self: flex-start;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 10;
+}
+@media (min-width: 640px) {
+  .modal-backdrop { align-items: center; }
+}
+.modal {
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+@media (min-width: 640px) {
+  .modal { border-radius: 16px; }
+}
+.modal h2 { font-size: 16px; margin: 0 0 16px; font-weight: 700; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+.modal-footer button {
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-size: 14px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text-dim);
+}
+.modal-footer button.primary {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
+  font-weight: 700;
+}
+.hint { font-size: 12px; color: var(--text-mute); margin-top: 26px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div id="displayView" class="hidden">
+  <div id="displayTitle"></div>
+  <div id="displayList"></div>
+  <div id="displayEmpty" class="hidden">No items to show. Exit fullscreen to add content.</div>
+  <div id="displayLang"></div>
+</div>
+
+<div id="adminView">
+  <div class="admin-header">
+    <h1>SimpleDigitalSignage — Admin</h1>
+    <button id="presentBtn">Present</button>
+  </div>
+
+  <div class="field" id="boardTitleField">
+    <label for="boardTitleInput">Board title</label>
+    <input type="text" id="boardTitleInput" placeholder="e.g. Today's Menu">
+  </div>
+
+  <div class="item-list" id="itemList"></div>
+  <button id="addItemBtn">+ Add item</button>
+
+  <p class="hint">Enter fullscreen (Present) to switch to display mode. Press Esc, or exit fullscreen, to return here. All data is saved on this device only.</p>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+const STORAGE_KEY = 'signage_board_v1';
+const STATUSES = ['highlight','normal','subdued','paused'];
+const STATUS_LABEL = { highlight: 'Highlight', normal: 'Normal', subdued: 'Subdued', paused: 'Paused' };
+
+function uid(){ return 'i' + Math.random().toString(36).slice(2,9); }
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {
+    title: 'Signage Board',
+    items: [
+      { id: uid(), title: 'Welcome', content: [{ lang:'EN', text:'Set up your board in the panel below.' }], status: 'normal', order: 1 }
+    ]
+  };
+}
+function saveState(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) { console.error(e); }
+}
+
+let state = loadState();
+
+/* ---------------- ADMIN RENDER ---------------- */
+
+const boardTitleInput = document.getElementById('boardTitleInput');
+boardTitleInput.value = state.title || '';
+boardTitleInput.addEventListener('input', e=>{
+  state.title = e.target.value;
+  saveState();
+  renderDisplay();
+});
+
+function sortedItems(){
+  return [...state.items].sort((a,b)=> a.order - b.order);
+}
+
+function firstText(item){
+  if(!item.content || !item.content.length) return '';
+  return item.content[0].text || '';
+}
+
+function renderAdminList(){
+  const list = document.getElementById('itemList');
+  list.innerHTML = '';
+  sortedItems().forEach((item, idx, arr)=>{
+    const card = document.createElement('div');
+    card.className = 'item-card' + (item.status === 'paused' ? ' paused' : '');
+
+    const top = document.createElement('div');
+    top.className = 'item-top';
+
+    const orderCtrl = document.createElement('div');
+    orderCtrl.className = 'order-controls';
+    const upBtn = document.createElement('button');
+    upBtn.textContent = '▲';
+    upBtn.setAttribute('aria-label','Move up');
+    upBtn.disabled = idx === 0;
+    upBtn.addEventListener('click', ()=> moveItem(item.id, -1));
+    const downBtn = document.createElement('button');
+    downBtn.textContent = '▼';
+    downBtn.setAttribute('aria-label','Move down');
+    downBtn.disabled = idx === arr.length - 1;
+    downBtn.addEventListener('click', ()=> moveItem(item.id, 1));
+    orderCtrl.appendChild(upBtn);
+    orderCtrl.appendChild(downBtn);
+
+    const main = document.createElement('div');
+    main.className = 'item-main';
+    const t = document.createElement('div');
+    t.className = 'it-title';
+    t.textContent = item.title || '(untitled)';
+    const p = document.createElement('div');
+    p.className = 'it-preview';
+    p.textContent = firstText(item).slice(0,80);
+    main.appendChild(t);
+    main.appendChild(p);
+
+    top.appendChild(orderCtrl);
+    top.appendChild(main);
+
+    const actions = document.createElement('div');
+    actions.className = 'item-actions';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', ()=> openItemModal(item.id));
+    const dupBtn = document.createElement('button');
+    dupBtn.textContent = 'Duplicate';
+    dupBtn.addEventListener('click', ()=> duplicateItem(item.id));
+    const delBtn = document.createElement('button');
+    delBtn.className = 'danger';
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', ()=> confirmDelete(item.id));
+    actions.appendChild(editBtn);
+    actions.appendChild(dupBtn);
+    actions.appendChild(delBtn);
+
+    const statusRow = document.createElement('div');
+    statusRow.className = 'status-row';
+    STATUSES.forEach(s=>{
+      const chip = document.createElement('button');
+      chip.className = 'status-chip' + (item.status === s ? ' active' : '');
+      chip.textContent = STATUS_LABEL[s];
+      chip.addEventListener('click', ()=>{
+        item.status = s;
+        saveState();
+        renderAdminList();
+        renderDisplay();
+      });
+      statusRow.appendChild(chip);
+    });
+
+    card.appendChild(top);
+    card.appendChild(actions);
+    card.appendChild(statusRow);
+    list.appendChild(card);
+  });
+}
+
+function moveItem(id, dir){
+  const arr = sortedItems();
+  const idx = arr.findIndex(i=>i.id===id);
+  const swapIdx = idx + dir;
+  if(swapIdx < 0 || swapIdx >= arr.length) return;
+  const a = arr[idx], b = arr[swapIdx];
+  const tmp = a.order; a.order = b.order; b.order = tmp;
+  saveState();
+  renderAdminList();
+  renderDisplay();
+}
+
+function duplicateItem(id){
+  const src = state.items.find(i=>i.id===id);
+  if(!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = uid();
+  copy.title = src.title + ' (copy)';
+  copy.order = Math.max(...state.items.map(i=>i.order), 0) + 1;
+  state.items.push(copy);
+  saveState();
+  renderAdminList();
+  renderDisplay();
+}
+
+function confirmDelete(id){
+  const item = state.items.find(i=>i.id===id);
+  if(!item) return;
+  openConfirmModal(
+    'Delete item?',
+    'This removes "' + (item.title || 'this item') + '" permanently. This cannot be undone.',
+    ()=>{
+      state.items = state.items.filter(i=>i.id!==id);
+      saveState();
+      renderAdminList();
+      renderDisplay();
+    }
+  );
+}
+
+document.getElementById('addItemBtn').addEventListener('click', ()=>{
+  const newItem = {
+    id: uid(),
+    title: '',
+    content: [{ lang:'EN', text:'' }],
+    status: 'normal',
+    order: Math.max(0, ...state.items.map(i=>i.order)) + 1
+  };
+  state.items.push(newItem);
+  saveState();
+  renderAdminList();
+  openItemModal(newItem.id);
+});
+
+/* ---------------- MODALS ---------------- */
+
+function closeModal(){
+  document.getElementById('modalRoot').innerHTML = '';
+}
+
+function openConfirmModal(title, message, onConfirm){
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = '';
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  const h2 = document.createElement('h2');
+  h2.textContent = title;
+  const p = document.createElement('p');
+  p.style.cssText = 'font-size:14px;color:var(--text-dim);line-height:1.5;margin:0;';
+  p.textContent = message;
+  const footer = document.createElement('div');
+  footer.className = 'modal-footer';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', closeModal);
+  const okBtn = document.createElement('button');
+  okBtn.className = 'primary';
+  okBtn.textContent = 'Delete';
+  okBtn.addEventListener('click', ()=>{ onConfirm(); closeModal(); });
+  footer.appendChild(cancelBtn);
+  footer.appendChild(okBtn);
+  modal.appendChild(h2);
+  modal.appendChild(p);
+  modal.appendChild(footer);
+  backdrop.appendChild(modal);
+  root.appendChild(backdrop);
+}
+
+function openItemModal(id){
+  const item = state.items.find(i=>i.id===id);
+  if(!item) return;
+  const root = document.getElementById('modalRoot');
+  root.innerHTML = '';
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+
+  const h2 = document.createElement('h2');
+  h2.textContent = 'Edit item';
+
+  const titleField = document.createElement('div');
+  titleField.className = 'field';
+  const titleLabel = document.createElement('label');
+  titleLabel.textContent = 'Title';
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.value = item.title || '';
+  titleInput.placeholder = 'e.g. Table 4, Counter A, Today\'s special';
+  titleField.appendChild(titleLabel);
+  titleField.appendChild(titleInput);
+
+  const contentField = document.createElement('div');
+  contentField.className = 'field';
+  const contentLabel = document.createElement('label');
+  contentLabel.textContent = 'Content (add a translation for each language shown on the board)';
+  const langRows = document.createElement('div');
+  langRows.className = 'lang-rows';
+
+  const workingContent = item.content && item.content.length
+    ? JSON.parse(JSON.stringify(item.content))
+    : [{ lang:'EN', text:'' }];
+
+  function renderLangRows(){
+    langRows.innerHTML = '';
+    workingContent.forEach((c, idx)=>{
+      const row = document.createElement('div');
+      row.className = 'lang-row';
+      const codeInput = document.createElement('input');
+      codeInput.type = 'text';
+      codeInput.className = 'lang-code';
+      codeInput.value = c.lang;
+      codeInput.maxLength = 5;
+      codeInput.addEventListener('input', e=>{ c.lang = e.target.value.toUpperCase(); });
+      const textArea = document.createElement('textarea');
+      textArea.style.flex = '1';
+      textArea.value = c.text;
+      textArea.addEventListener('input', e=>{ c.text = e.target.value; });
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-lang';
+      removeBtn.textContent = '✕';
+      removeBtn.disabled = workingContent.length <= 1;
+      removeBtn.addEventListener('click', ()=>{
+        workingContent.splice(idx,1);
+        renderLangRows();
+      });
+      row.appendChild(codeInput);
+      row.appendChild(textArea);
+      row.appendChild(removeBtn);
+      langRows.appendChild(row);
+    });
+  }
+  renderLangRows();
+
+  const addLangBtn = document.createElement('button');
+  addLangBtn.id = 'addLangBtn';
+  addLangBtn.textContent = '+ Add language';
+  addLangBtn.addEventListener('click', ()=>{
+    workingContent.push({ lang:'', text:'' });
+    renderLangRows();
+  });
+
+  contentField.appendChild(contentLabel);
+  contentField.appendChild(langRows);
+  contentField.appendChild(addLangBtn);
+
+  const footer = document.createElement('div');
+  footer.className = 'modal-footer';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', closeModal);
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'primary';
+  saveBtn.textContent = 'Save';
+  saveBtn.addEventListener('click', ()=>{
+    item.title = titleInput.value.trim();
+    item.content = workingContent
+      .filter(c=>c.text.trim() !== '')
+      .map(c=>({ lang: (c.lang || 'EN').trim().toUpperCase() || 'EN', text: c.text }));
+    if(item.content.length === 0) item.content = [{ lang:'EN', text:'' }];
+    saveState();
+    renderAdminList();
+    renderDisplay();
+    closeModal();
+  });
+  footer.appendChild(cancelBtn);
+  footer.appendChild(saveBtn);
+
+  modal.appendChild(h2);
+  modal.appendChild(titleField);
+  modal.appendChild(contentField);
+  modal.appendChild(footer);
+  backdrop.appendChild(modal);
+  root.appendChild(backdrop);
+}
+
+/* ---------------- DISPLAY RENDER ---------------- */
+
+let langCycle = [];
+let langIndex = 0;
+let langTimer = null;
+
+function collectLanguages(){
+  const set = [];
+  sortedItems().forEach(item=>{
+    if(item.status === 'paused') return;
+    (item.content||[]).forEach(c=>{
+      if(c.lang && !set.includes(c.lang)) set.push(c.lang);
+    });
+  });
+  return set;
+}
+
+function textFor(item, lang){
+  const found = (item.content||[]).find(c=>c.lang===lang);
+  if(found) return found.text;
+  return firstText(item);
+}
+
+function renderDisplay(){
+  document.getElementById('displayTitle').textContent = state.title || '';
+  const list = document.getElementById('displayList');
+  const empty = document.getElementById('displayEmpty');
+  const langLabel = document.getElementById('displayLang');
+
+  langCycle = collectLanguages();
+  if(langIndex >= langCycle.length) langIndex = 0;
+  const currentLang = langCycle[langIndex] || 'EN';
+  langLabel.textContent = langCycle.length > 1 ? currentLang : '';
+
+  const visible = sortedItems().filter(i=>i.status !== 'paused');
+  list.innerHTML = '';
+  if(visible.length === 0){
+    empty.classList.remove('hidden');
+  } else {
+    empty.classList.add('hidden');
+    visible.forEach(item=>{
+      const row = document.createElement('div');
+      row.className = 'd-row status-' + item.status;
+      if(item.title){
+        const t = document.createElement('div');
+        t.className = 'd-title';
+        t.textContent = item.title;
+        row.appendChild(t);
+      }
+      const c = document.createElement('div');
+      c.className = 'd-content';
+      c.textContent = textFor(item, currentLang);
+      row.appendChild(c);
+      list.appendChild(row);
+    });
+  }
+}
+
+function startLangCycle(){
+  stopLangCycle();
+  langTimer = setInterval(()=>{
+    if(langCycle.length <= 1) return;
+    langIndex = (langIndex + 1) % langCycle.length;
+    const list = document.getElementById('displayList');
+    list.style.opacity = '0';
+    setTimeout(()=>{ renderDisplay(); list.style.opacity = '1'; }, 260);
+  }, 4500);
+}
+function stopLangCycle(){
+  if(langTimer){ clearInterval(langTimer); langTimer = null; }
+}
+
+/* ---------------- MODE SWITCH (fullscreen = display) ---------------- */
+
+function isFullscreen(){
+  return !!document.fullscreenElement;
+}
+
+function applyMode(){
+  const displayEl = document.getElementById('displayView');
+  const adminEl = document.getElementById('adminView');
+  if(isFullscreen()){
+    displayEl.classList.remove('hidden');
+    adminEl.classList.add('hidden');
+    renderDisplay();
+    startLangCycle();
+  } else {
+    displayEl.classList.add('hidden');
+    adminEl.classList.remove('hidden');
+    stopLangCycle();
+    renderAdminList();
+  }
+}
+
+document.getElementById('presentBtn').addEventListener('click', ()=>{
+  const el = document.documentElement;
+  if(el.requestFullscreen) el.requestFullscreen().catch(()=>{});
+  else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+});
+
+document.addEventListener('fullscreenchange', applyMode);
+document.addEventListener('webkitfullscreenchange', applyMode);
+
+/* ---------------- INIT ---------------- */
+
+renderAdminList();
+applyMode();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((e)=> console.error('SW registration failed', e));
+  });
+}
+</script>
+</body>
+</html>
