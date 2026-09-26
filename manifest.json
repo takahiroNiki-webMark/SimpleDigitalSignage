@@ -1,6 +1,6 @@
 {
   "name": "SimpleDigitalSignage",
-  "short_name": "Signage",
+  "short_name": "SimpleDigitalSignage",
   "description": "A general-purpose digital signage board for menus, notices, and call displays.",
   "start_url": "./index.html",
   "scope": "./",
